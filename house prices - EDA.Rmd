@@ -1,0 +1,354 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+packages <- c("gbm", "xgboost", "caret", "tidyr", "ggplot2", "lubridate", "corrplot", "caretEnsemble", "e1071", "ggridges", "forcats", "car", "fastDummies")
+purrr::walk(packages, library, character.only = TRUE, warn.conflicts = FALSE)
+```
+
+```{r message = F}
+list.files()
+# col_types = columns(.default = col_character())
+train = read_csv("train.csv")
+test = read_csv("test.csv")
+sample_submission = read_csv("sample_submission.csv")
+# glimpse(train)
+```
+
+```{r}
+#there are a lot of features?
+dim(train)
+```
+
+```{r}
+#and a lot of missing values
+sum(is.na(train))
+```
+
+#ETL
+
+Perform all ETL on this section.  All of the functions here need to be idepotent (f(f(x)) = f(x)) so that accidently re-running this will not break the data.
+
+```{r}
+#Get median LotFrontage by neighborhood for NA calculation below
+LotFrontage_neighborhood_median <- train %>% group_by(Neighborhood) %>% summarise(LotFrontage  = median(LotFrontage, na.rm = TRUE))
+
+get_median <- function(row){
+  cur_neighborhood = row %>% select(Neighborhood) %>% unlist() %>% as.character()
+  #LotFrontage_neighborhood_median %>% filter(Neighborhood == cur_neighborhood) %>% select(LotFrontage) %>% unlist() %>% as.numeric()
+  cur_neighborhood
+}
+
+fill_na = function(column, fill_value){coalesce(column, fill_value)}
+
+model_data <- train %>%
+  modify_if(is.integer, as.double) %>% 
+  mutate(train_source = "train") %>%
+  rbind(., (test %>% mutate(SalePrice = NA, train_source = "test"))) %>% 
+  filter(!(GrLivArea > 4000 & SalePrice < 4e+05)) %>% #remove two outlying points
+  filter(!(OverallQual < 5 & SalePrice > 200000)) %>% #remove one additional outlier
+  mutate(MSSubClass = as.factor(MSSubClass),
+         SalePrice = log(SalePrice + 1)) %>% #log transform sale price
+  #Fill in Missing Values
+  mutate_at(vars("PoolQC", "MiscFeature","Alley", "Fence", "GarageType", "GarageFinish", "GarageQual", "GarageCond", "FireplaceQu", "BsmtQual","BsmtExposure", "BsmtCond", "BsmtFinType1", "BsmtFinType2", "MasVnrType"), function(x){coalesce(x, "None")}) %>% 
+  mutate_at(vars("GarageYrBlt", "GarageArea", "GarageCars", "BsmtFinSF1", "BsmtFinSF2", "BsmtUnfSF", "TotalBsmtSF", "BsmtFullBath", "BsmtHalfBath", "MasVnrArea"), function(x){coalesce(x, 0)}) %>%
+  mutate(MSZoning  = coalesce(MSZoning, "RL"),
+         Functional = coalesce(Functional, "Typ"),
+         Electrical  = coalesce(Electrical, "SBrkr"),
+         KitchenQual = coalesce(KitchenQual, "TA"),
+         Exterior1st  = coalesce(Exterior1st,"VinylSd"),
+         Exterior2nd  = coalesce(Exterior2nd,"VinylSd"),
+         SaleType  = coalesce(SaleType , "WD"),
+         MSSubClass  = coalesce(MSSubClass , as.integer(0))) %>% #This means that there's no building class
+  select(-Utilities) %>%  #only 1 unique level in training set.  Useless.
+  left_join(LotFrontage_neighborhood_median, by = "Neighborhood") %>% #left join and fill in median for neighborhood
+  mutate(LotFrontage = coalesce(LotFrontage.x, LotFrontage.y)) %>%  #fill in missing values with neighboorhood median
+  select(-LotFrontage.y, -LotFrontage.x) %>% 
+  modify_if(is.character, as.factor) %>% #convert characters to factors 
+  mutate(TotalSF = TotalBsmtSF + `1stFlrSF` + `2ndFlrSF`) #because square feet is an important predictor, we add a new feature which takes into account the total square feet of all floors
+```
+
+#Label Encoding
+
+Add an order to factors which have an implied rank.  For example, (Low, Mid, High) would be encoded as (1, 2, 3).  
+
+*Question: Are these already in the proper order?  For example, are the factor levels low, medium, high, or could they be medium, low, high?*
+
+```{r}
+#check for now missing values
+model_data %>% select(-SalePrice) %>% (function(x){sum(is.na(x))})
+
+#Encode an order in categorical variables
+cols_to_encode <- c('FireplaceQu', 'BsmtQual', 'BsmtCond', 'GarageQual', 'GarageCond', 
+        'ExterQual', 'ExterCond','HeatingQC', 'PoolQC', 'KitchenQual', 'BsmtFinType1', 
+        'BsmtFinType2', 'Functional', 'Fence', 'BsmtExposure', 'GarageFinish', 'LandSlope',
+        'LotShape', 'PavedDrive', 'Street', 'Alley', 'CentralAir', 'MSSubClass', 'OverallCond', 
+        'YrSold', 'MoSold')
+
+# function which returns function which will encode vectors with values  of 'vec' 
+label_encoder = function(vec){
+  levels = sort(unique(vec))
+  function(x){
+    match(x, levels)
+  }
+}
+
+for (column in cols_to_encode){
+  current_data <- model_data %>% select(column) %>% unlist()
+  column_encoder <- label_encoder(current_data)
+  model_data[[column]] <- column_encoder(current_data)
+}
+
+```
+
+#Correcting Skewness
+
+Linear models work best when the input feaures are symmetric.  A measure of the symmetry of a distribution is the skewness.  Many of these numeric features are skewed left or skewed right.
+
+```{r}
+skewed_features <- train %>% 
+  select(-cols_to_encode, -SalePrice) %>% #ignore the encoded features because these are not "real" numeric features
+  select_if(is.numeric) %>% 
+  summarise_all(skewness) %>% 
+  gather(column, skewness) %>% 
+  arrange(desc(skewness)) %>%
+  filter(skewness > 0)
+
+skewed_features
+```
+We can look at the histograms for these features.
+
+```{r}
+train %>% 
+  select(skewed_features$column) %>% 
+  head(20) %>% 
+  mutate_all(scale) %>%  #this doesn't impact skewness
+  gather("x_name", "x_value", 1:20) %>% 
+  ggplot(aes(x_value, x_name)) + 
+  geom_density_ridges() + 
+  xlim(-2, 2)
+```
+
+```{r}
+#fix skewness with box cox transform
+
+#apply box cox transform of 1 + x for each of the skewed columns
+apply_box_cox <- function(feature) {bcPower(feature + 1, lambda =  0.15)}
+
+model_data <- model_data %>% 
+  mutate_at(skewed_features$column, apply_box_cox)
+
+train %>% 
+  dplyr::select(skewed_features$column) %>% 
+  mutate_all(apply_box_cox) %>% #this should fix skewness
+  # mutate_all(scale) %>%  #this doesn't impact skewness
+  gather("x_name", "x_value", 1:20) %>% 
+  ggplot(aes(x_value, x_name)) + 
+  geom_density_ridges() + 
+  xlim(-2, 2)
+
+train %>% 
+  select(-cols_to_encode) %>% #ignore the encoded features because these are not "real" numeric features
+  select_if(is.numeric) %>% 
+  mutate_all(apply_box_cox) %>% #this should fix skewness
+  summarise_all(skewness) %>% 
+  gather(column, skewness) %>% 
+  arrange(desc(skewness)) %>% top_n(20)
+```
+
+#Create dummy variables
+
+```{r}
+#categorical columns
+cat_vars <- model_data %>% select_if(is.factor) %>% names()
+
+model_data_dummies <- model_data %>% 
+  select(cat_vars) %>% 
+  dummy_cols() %>% 
+  mutate(row_num = row_number())
+
+#replace all of the non-dummy columns in the model data
+model_data <- model_data %>% 
+  mutate(row_num = row_number()) %>% 
+  select(-cat_vars) %>% 
+  left_join(model_data_dummies, by = "row_num") %>% 
+  select(-row_num, -Id)
+```
+
+#Recreate training and test set
+
+```{r}
+train <- model_data %>% filter(train_source == "train") %>% select(-train_source)
+test <- model_data %>% filter(train_source == "test") %>% select(-train_source, -SalePrice)
+```
+
+I'm saving the train and test sets for future use.
+
+```{r}
+saveRDS(train, "train_final.RDS")
+saveRDS(test, "test_final.RDS")
+# train_copy <- readRDS("train_final.RDS")
+```
+
+
+There are two types of missing values 1) those with an actual NA, and 2) those with a blank.  For instance, a single story home will have 0 for 2nd floor area.  How is this dealt with?
+
+```{r}
+pct_na <- train %>% 
+  map_df(~sum(is.na(.x))/nrow(train)) %>% 
+  t()
+
+#ignore features with na for now
+miss_summary <- data_frame("feature" = rownames(pct_na), pct_na = as.vector(pct_na)) %>% arrange(pct_na)
+
+miss_summary %>% 
+  mutate(feature = fct_relevel(feature, miss_summary %>% select(feature) %>% unlist() %>% as.character())) %>% 
+  filter(pct_na > 0) %>% 
+  ggplot(aes(feature, pct_na)) + 
+  geom_bar(stat = "identity") + 
+  coord_flip()
+```
+
+#Imputation of Missing Values
+
+We impute them by proceeding sequentially through features with missing values.  These are based on common sense.  If a feature is missing, try to figure out what the logical value should be.  For example, on one-story house, if the 2ndStoryArea is missing, replace this with zero.
+
+This is a summary of what's been done.  See the ETL section for the actual computation.
+
+
+
+```{r}
+cols_to_keep <- miss_summary %>% filter(pct_na == 0) %>% select(feature)
+dim(cols_to_keep)
+```
+
+#Numeric Features
+
+```{r}
+numeric_cols <- train %>% select_if(is.numeric) %>% names()
+
+get_histogram <- function(name){
+  train %>% 
+  ggplot(aes(get(name))) +
+  geom_histogram() + 
+  ggtitle(name)
+}
+
+numeric_cols[30:40] %>% map(~get_histogram(.x))
+```
+#Categorical Features
+
+```{r}
+categorical_cols = train %>% select(-numeric_cols) %>% names()
+
+categorical_cols[1]
+train %>% select(categorical_cols) %>% summary()
+```
+
+
+#Feature ideas
+* if has 1st floor
+* is has basement
+* has a new garage?  GarageYrBlt > yearBUilt
+* prices change over time with the market - using YrSold yelps adjust for inflation
+
+#Outliers
+
+```{r}
+train %>% 
+  mutate(outlier = ifelse(GrLivArea > 4000 & SalePrice < 4e+05, "outlier", "not_outlier")) %>% 
+  ggplot(aes(GrLivArea, SalePrice, color = outlier)) + 
+  geom_point()
+```
+
+
+#Target Variable: Sale Price
+
+```{r}
+train %>% 
+  ggplot(aes(SalePrice)) + 
+  geom_histogram()
+
+train %>% 
+  ggplot(aes(sample = SalePrice)) + 
+  stat_qq() + 
+  stat_qq_line()
+
+#apply log transform
+train %>% 
+  mutate(SalePrice = log(SalePrice + 1)) %>% 
+  ggplot(aes(SalePrice)) + 
+  geom_histogram()
+
+train %>% 
+  mutate(SalePrice = log(SalePrice + 1)) %>% 
+  ggplot(aes(sample = SalePrice)) + 
+  stat_qq() + 
+  stat_qq_line()
+```
+
+
+#Baseline Model
+
+Before building models we need to define the cross-validation strucure.  The guy on Kaggle uses root mean squared logg error.  We create a function to get this based on the model.
+
+```{r}
+get_rmsle <- function(model){
+  
+}
+
+get_GBM_RMSE <- function(input_model) {
+  y_hat <- predict.train(input_model, train) #is this REALLY the training data?  
+  y <- train$SalePrice
+  #return the square root of the squared error
+  sqrt(1/length(x)*sum( (log(y) - log(y_hat))^2 ))
+}
+```
+
+
+Use simple linear regression
+
+```{r}
+regressControl  <- trainControl(method="repeatedcv",
+                    number = 5,
+                    repeats = 1, #set this to 1 for now
+                    returnResamp = "all"
+                    ) 
+
+baseline <- train(SalePrice ~ LotArea + YrSold + MSSubClass,
+           data = train,
+           method  = "lm",
+           trControl = regressControl)
+
+baseline
+```
+
+#LASSO
+
+Lasso is very sensitive to outliers, so we need to fix this.  First, we just fit a LASSO without doing anything to fix outliers.  In Python, SciKitlearn has a function which scales based on the inter quartile range.  I have to create a function to do this.
+
+```{r}
+scale_IQR <- function(x){
+  (x - median(x))/(quantile(x, 0.75) - quantile(x, 0.25))
+}
+```
+
+As a baseline, the Kaggle rmsle is : `Lasso score: 0.1115 (0.0074)`
+
+```{r}
+# Using caret to perform CV
+cctrl1 <- trainControl(method="cv", number=5, returnResamp="all",
+                       classProbs=TRUE, summaryFunction=twoClassSummary)
+set.seed(849)
+test_class_cv_model <- train(trainX, trainY, method = "glmnet", 
+                             trControl = cctrl1,metric = "ROC",
+                             tuneGrid = expand.grid(alpha = 1,
+                                                    lambda = seq(0.001,0.1,by = 0.001)))
+```
+
+
+
+
