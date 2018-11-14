@@ -5,7 +5,7 @@ output: html_notebook
 
 ```{r}
 library(tidyverse)
-packages <- c("gbm", "xgboost", "caret", "tidyr", "ggplot2", "lubridate", "corrplot", "caretEnsemble", "e1071", "ggridges", "forcats", "car", "fastDummies")
+packages <- c("gbm", "xgboost", "caret", "tidyr", "ggplot2", "lubridate", "corrplot", "caretEnsemble", "e1071", "ggridges", "forcats", "car", "fastDummies", "glmnet", "ggpubr")
 purrr::walk(packages, library, character.only = TRUE, warn.conflicts = FALSE)
 ```
 
@@ -66,24 +66,73 @@ model_data <- train %>%
   select(-Utilities) %>%  #only 1 unique level in training set.  Useless.
   left_join(LotFrontage_neighborhood_median, by = "Neighborhood") %>% #left join and fill in median for neighborhood
   mutate(LotFrontage = coalesce(LotFrontage.x, LotFrontage.y)) %>%  #fill in missing values with neighboorhood median
-  select(-LotFrontage.y, -LotFrontage.x) %>% 
+  select(-LotFrontage.y, -LotFrontage.x, -Id) %>% 
   modify_if(is.character, as.factor) %>% #convert characters to factors 
-  mutate(TotalSF = TotalBsmtSF + `1stFlrSF` + `2ndFlrSF`) #because square feet is an important predictor, we add a new feature which takes into account the total square feet of all floors
+  mutate(TotalSF = TotalBsmtSF + `1stFlrSF` + `2ndFlrSF`)  #because square feet is an important predictor, we add a new feature which takes into account the total square feet of all floors
+
+  
+#relevel factors to be in a logical order
+quality_vars <- c('FireplaceQu', 'BsmtQual', 'BsmtCond', 'GarageQual', 'GarageCond', 'ExterQual', 'ExterCond','HeatingQC', 'PoolQC', 'KitchenQual')
+order_quality_vars <- function(factor){droplevels(fct_relevel(factor, c("None", "Po", "Fa", "TA", "Gd", "Ex")))}
+
+model_data <- model_data %>% mutate_at(quality_vars, order_quality_vars) %>% mutate_at(quality_vars, droplevels)
+
+#check if factor levels match unique valeus
+model_data %>% select_if(is.factor) %>% map(function(x){as.character(setdiff(unique(x), levels(x)))}) %>% unique()
 ```
 
 #Label Encoding
 
 Add an order to factors which have an implied rank.  For example, (Low, Mid, High) would be encoded as (1, 2, 3).  
 
-*Question: Are these already in the proper order?  For example, are the factor levels low, medium, high, or could they be medium, low, high?*
+*These are in the wrong order and need to be fixed?*
+
+ model_data %>% select_if(is.integer) %>% names()
+ [1] "MSSubClass"   "Street"       "Alley"        "LotShape"     "LandSlope"    "OverallCond"  "ExterQual"   
+ [8] "ExterCond"    "BsmtQual"     "BsmtCond"     "BsmtExposure" "BsmtFinType1" "BsmtFinType2" "HeatingQC"   
+[15] "CentralAir"   "KitchenQual"  "Functional"   "FireplaceQu"  "GarageFinish" "GarageQual"   "GarageCond"  
+[22] "PavedDrive"   "PoolQC"       "Fence"        "MoSold"       "YrSold"     
+
+Check for now missing values
 
 ```{r}
-#check for now missing values
 model_data %>% select(-SalePrice) %>% (function(x){sum(is.na(x))})
+```
 
-#Encode an order in categorical variables
+Encode an order in categorical variables
+
+```{r}
+model_data$FireplaceQu %>% unique() %>% sort()
+```
+There is information in the categorical features, which come in by default as strings.  These factor levels need to be put into the correct order.  This order should actually be from worst to best: None, Poor (poor), Fa, TA, Gd, Ex
+
+```{r}
+qualLevels <- c("None", "Po", "Fa", "TA", "Gd", "Ex")
+
+before_releveling <- model_data %>% 
+  ggplot(aes(GarageQual, SalePrice)) + 
+  geom_boxplot() + 
+  ggtitle("Before Releveling")
+
+after_releveling <- model_data %>% transmute(SalePrice = SalePrice, 
+                         GarageQual = fct_relevel(GarageQual, qualLevels)) %>% 
+  ggplot(aes(GarageQual, SalePrice)) + 
+  geom_boxplot() + 
+  ggtitle("After Reveling")
+
+ggarrange(before_releveling, after_releveling)
+```
+
+```{r}
+model_data %>% select(BsmtQual) %>% mutate(BstQual = fct_relevel(BsmtQual, qualLevels)) %>% summary()
+```
+
+
+
+```{r}
+
 cols_to_encode <- c('FireplaceQu', 'BsmtQual', 'BsmtCond', 'GarageQual', 'GarageCond', 
-        'ExterQual', 'ExterCond','HeatingQC', 'PoolQC', 'KitchenQual', 'BsmtFinType1', 
+        'ExterQual', 'ExterCond','HeatingQC', 'KitchenQual', 'BsmtFinType1', 
         'BsmtFinType2', 'Functional', 'Fence', 'BsmtExposure', 'GarageFinish', 'LandSlope',
         'LotShape', 'PavedDrive', 'Street', 'Alley', 'CentralAir', 'MSSubClass', 'OverallCond', 
         'YrSold', 'MoSold')
@@ -96,12 +145,13 @@ label_encoder = function(vec){
   }
 }
 
+model_data_copy <- model_data
+
 for (column in cols_to_encode){
   current_data <- model_data %>% select(column) %>% unlist()
   column_encoder <- label_encoder(current_data)
-  model_data[[column]] <- column_encoder(current_data)
+  model_data_copy[[column]] <- column_encoder(current_data)
 }
-
 ```
 
 #Correcting Skewness
@@ -110,31 +160,31 @@ Linear models work best when the input feaures are symmetric.  A measure of the 
 
 ```{r}
 skewed_features <- train %>% 
-  select(-cols_to_encode, -SalePrice) %>% #ignore the encoded features because these are not "real" numeric features
+  select(-SalePrice) %>% #ignore the encoded features because these are not "real" numeric features
   select_if(is.numeric) %>% 
   summarise_all(skewness) %>% 
   gather(column, skewness) %>% 
   arrange(desc(skewness)) %>%
-  filter(skewness > 0)
+  filter(abs(skewness) > 0.75) # 0.75 value from kaggle kernal.  
 
 skewed_features
+dim(skewed_features)
 ```
 We can look at the histograms for these features.
 
 ```{r}
 train %>% 
   select(skewed_features$column) %>% 
-  head(20) %>% 
   mutate_all(scale) %>%  #this doesn't impact skewness
-  gather("x_name", "x_value", 1:20) %>% 
+  gather("x_name", "x_value") %>% 
   ggplot(aes(x_value, x_name)) + 
   geom_density_ridges() + 
   xlim(-2, 2)
 ```
 
-```{r}
-#fix skewness with box cox transform
+We fix skewness with a box cox transform
 
+```{r}
 #apply box cox transform of 1 + x for each of the skewed columns
 apply_box_cox <- function(feature) {bcPower(feature + 1, lambda =  0.15)}
 
@@ -145,13 +195,12 @@ train %>%
   dplyr::select(skewed_features$column) %>% 
   mutate_all(apply_box_cox) %>% #this should fix skewness
   # mutate_all(scale) %>%  #this doesn't impact skewness
-  gather("x_name", "x_value", 1:20) %>% 
+  gather("x_name", "x_value") %>% 
   ggplot(aes(x_value, x_name)) + 
   geom_density_ridges() + 
   xlim(-2, 2)
 
 train %>% 
-  select(-cols_to_encode) %>% #ignore the encoded features because these are not "real" numeric features
   select_if(is.numeric) %>% 
   mutate_all(apply_box_cox) %>% #this should fix skewness
   summarise_all(skewness) %>% 
@@ -159,24 +208,6 @@ train %>%
   arrange(desc(skewness)) %>% top_n(20)
 ```
 
-#Create dummy variables
-
-```{r}
-#categorical columns
-cat_vars <- model_data %>% select_if(is.factor) %>% names()
-
-model_data_dummies <- model_data %>% 
-  select(cat_vars) %>% 
-  dummy_cols() %>% 
-  mutate(row_num = row_number())
-
-#replace all of the non-dummy columns in the model data
-model_data <- model_data %>% 
-  mutate(row_num = row_number()) %>% 
-  select(-cat_vars) %>% 
-  left_join(model_data_dummies, by = "row_num") %>% 
-  select(-row_num, -Id)
-```
 
 #Recreate training and test set
 
@@ -239,21 +270,6 @@ get_histogram <- function(name){
 
 numeric_cols[30:40] %>% map(~get_histogram(.x))
 ```
-#Categorical Features
-
-```{r}
-categorical_cols = train %>% select(-numeric_cols) %>% names()
-
-categorical_cols[1]
-train %>% select(categorical_cols) %>% summary()
-```
-
-
-#Feature ideas
-* if has 1st floor
-* is has basement
-* has a new garage?  GarageYrBlt > yearBUilt
-* prices change over time with the market - using YrSold yelps adjust for inflation
 
 #Outliers
 
@@ -296,16 +312,17 @@ train %>%
 Before building models we need to define the cross-validation strucure.  The guy on Kaggle uses root mean squared logg error.  We create a function to get this based on the model.
 
 ```{r}
-get_rmsle <- function(model){
-  
+#I don't think this is working for the GLM net 
+get_rmse <- function(input_model) {
+  if(input_model$method == "glmnet"){
+    model_prediction <- predict(input_model, newx = lasso_x, s = input_model$bestTune$alpha)
+  } else {
+    model_prediction <- predict.train(input_model, train)
+  }
+
+  postResample(pred = model_prediction, obs = train$SalePrice) #something is wrong in how the lasso (GLMnet object) gets predicted values in caret... these preidctions are nonsense!
 }
 
-get_GBM_RMSE <- function(input_model) {
-  y_hat <- predict.train(input_model, train) #is this REALLY the training data?  
-  y <- train$SalePrice
-  #return the square root of the squared error
-  sqrt(1/length(x)*sum( (log(y) - log(y_hat))^2 ))
-}
 ```
 
 
@@ -318,7 +335,7 @@ regressControl  <- trainControl(method="repeatedcv",
                     returnResamp = "all"
                     ) 
 
-baseline <- train(SalePrice ~ LotArea + YrSold + MSSubClass,
+baseline <- train(SalePrice ~ LotArea + OverallQual,
            data = train,
            method  = "lm",
            trControl = regressControl)
@@ -332,23 +349,173 @@ Lasso is very sensitive to outliers, so we need to fix this.  First, we just fit
 
 ```{r}
 scale_IQR <- function(x){
-  (x - median(x))/(quantile(x, 0.75) - quantile(x, 0.25))
+  (x - median(x)) / (max(x) - min(x))
 }
+scale_IQR(rnorm(20))
 ```
 
-As a baseline, the Kaggle rmsle is : `Lasso score: 0.1115 (0.0074)`
+As a baseline, the Kaggle rmse is : `Lasso score: 0.1115 (0.0074)`
+
+```{r eval = F, include = F}
+#apply IRQ scale
+cols_to_scale <- train %>% select_if(is.numeric) %>% select(-SalePrice) %>% names()
+
+lasso_data <- train %>% 
+  mutate_at(cols_to_scale, scale_IQR) 
+  # mutate_at(cols_to_scale, scale)# for some reason the IQR scale isn't putting all the values between 0 and 1
+
+#check that all numeric features used in Lasso are between 0 and 1.  Otherwise the L1 penalty on the size of the coefficients will break the model.  This is because features with larger variance will need larger coefficients.
+lasso_data %>% summarise_if(is.numeric, function(x){max(x) - min(x)}) %>% gather(feature, max_min_difference) %>% arrange(desc(max_min_difference))
+```
+```{r}
+lasso_data %>% select(cols_to_scale) %>% mutate_all(scale) %>% summarise_if(is.numeric, function(x){max(x) - min(x)}) %>% gather(feature, max_min_difference) %>% arrange(desc(max_min_difference))
+```
+```{r}
+#categorical columns
+cat_vars <- lasso_data %>% select_if(is.factor) %>% names()
+
+lasso_data_dummies <- lasso_data %>%
+ select(cat_vars) %>%
+ dummy_cols(., remove_most_frequent_dummy = T) %>% #This was messing up my linear models!  The model matrix X was not full rank because there was no reference level
+ mutate(row_num = row_number())
+
+# replace all of the non-dummy columns in the model data
+
+lasso_data_with_dummies <- model_data %>%
+ mutate(row_num = row_number()) %>%
+ select(-cat_vars) %>%
+ left_join(model_data_dummies, by = "row_num") %>%
+ select(-row_num)
+
+lasso_x <- model.matrix(~ ., lasso_data %>% select(-SalePrice))
+lasso_y <- lasso_data$SalePrice
+```
+
+
+The caret wrapper is not passing all of the error messages through for the Lasso.  The underlying `glmnet` model is not fitting.  This is because `x` is too sparse.  I may need to remove factors which do not have many levels.
 
 ```{r}
-# Using caret to perform CV
-cctrl1 <- trainControl(method="cv", number=5, returnResamp="all",
-                       classProbs=TRUE, summaryFunction=twoClassSummary)
-set.seed(849)
-test_class_cv_model <- train(trainX, trainY, method = "glmnet", 
-                             trControl = cctrl1,metric = "ROC",
-                             tuneGrid = expand.grid(alpha = 1,
-                                                    lambda = seq(0.001,0.1,by = 0.001)))
+lassoCtrl <- trainControl(method="repeatedcv", number=5, repeats = 3, verboseIter = F)
+
+lassoGrid <-  expand.grid(alpha = 1, lambda = seq(0.001, 0.2, by = 0.005)) 
+
+lasso <- train(x = lasso_x,
+             y = lasso_y,
+             method = "glmnet", 
+             trControl = lassoCtrl,
+             metric = "RMSE",
+             tuneGrid = lassoGrid
+             )
+
+postResample(pred = predict.train(input_model, train), obs = train$SalePrice)
+
+postResample(lasso_pred, obs = train$SalePrice)
+```
+
+Because lasso is implemented in an old R library, the input x must be a model matrix with dummy variables.  This took me about 3 hours to figure out!
+
+FIt a general elastic net by allowing alpha to vary.
+
+```{r}
+elasticNetCtrl <- trainControl(method="repeatedcv", number=5, repeats = 3, verboseIter = F)
+
+elasticNetGrid <-  expand.grid(alpha = seq(0.1, 1, 0.1), lambda = seq(0.001, 0.2, by = 0.005)) 
+
+elasticNet <- train(x = elasticNet_x,
+             y = elasticNet_y,
+             method = "glmnet", 
+             trControl = elasticNetCtrl,
+             metric = "RMSE",
+             tuneGrid = elasticNetGrid
+             )
+
+elasticNet
 ```
 
 
 
+#GBM
+
+```{r}
+t1 <- Sys.time()
+gbmCtrl <- trainControl(method="repeatedcv", number=5, repeats = 3, verboseIter = F)
+
+gbmGrid <-  expand.grid(interaction.depth = c(1, 2, 3, 4), #most of the time this is sufficient
+                    n.trees = c(1000, 2000), 
+                    shrinkage = c(0.1, 0.05),
+                    n.minobsinnode = c(25, 50)) 
+
+gbm <- train(x = lasso_data %>% select(-SalePrice) %>% select_if(is.numeric) %>% as.matrix(),
+             y = lasso_data$SalePrice,
+             method = "gbm", 
+             trControl = gbmCtrl,
+             metric = "RMSE",
+             tuneGrid = gbmGrid,
+             train.fraction = 0.5
+             )
+plot(gbm)
+t2 <- Sys.time()
+gbm_fit_time <- t2 - t1
+```
+```{r}
+gbm
+get_rmse(gbm)
+saveRDS(gbm, "gbm.RDS")
+```
+
+
+```{r}
+get_rmse(gbm)
+var_importance <- varImp(gbm)$importance
+data_frame(feature = rownames(var_importance), importance = var_importance$Overall) %>% 
+  arrange(importance) %>% 
+  mutate(feature = fct_inorder(feature)) %>% 
+  top_n(50, wt = importance) %>% 
+  ggplot(aes(feature, importance)) + 
+  geom_bar(stat = "identity") + 
+  coord_flip()  + 
+  ggtitle("Top 50 most important features from GBM")
+```
+
+```{r}
+
+```
+
+
+#RF
+
+```{r}
+rfCtrl <- trainControl(method="repeatedcv", number=5, repeats = 3, verboseIter = F)
+
+rfGrid <-  expand.grid(mtry = c(40, 60, 80), ntree = seq(500, 5000, 500)) 
+
+rf <- train(SalePrice ~ .,
+             data = train, 
+             method = "rf", 
+             trControl = rfCtrl,
+             metric = "RMSE",
+             tuneGrid = rfGrid,
+             train.fraction = 0.5
+             )
+
+get_rmse(rf)
+```
+
+#Neural Net
+
+```{r}
+nnetCtrl <- trainControl(method="repeatedcv", number=5, repeats = 3, verboseIter = F)
+
+nnetGrid <-  expand.grid(mtry = c(40, 60, 80), ntree = seq(500, 5000, 500)) 
+
+nnet <- train(SalePrice ~ .,
+             data = train, 
+             method = "nnet", 
+             preProcess = "range",
+             tuneLength = 2,
+             maxit = 100
+             )
+
+get_rmse(nnet)
+```
 
