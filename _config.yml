@@ -1,0 +1,37 @@
+# SamWiki theme contract
+# Theme setup follows GitHub's Jekyll theme guide:
+# https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/adding-a-theme-to-your-github-pages-site-using-jekyll
+#
+# Strategy: one supported theme, jekyll-theme-cayman, skinned in assets/css/style.scss.
+# This project copies:
+# _config.yml (this theme line; project title and description)
+# assets/css/style.scss
+# _layouts/default.html
+# _includes/head-custom.html
+# _includes/samwiki-nav.html
+# and sets `samwiki: true` in the page front matter.
+#
+# Pages for this repository publish from the default branch (`master`) at the site root.
+# Live URL: https://sdcastillo.github.io/Kaggle-Advanced-Regression/
+
+title: Advanced Regression for Housing Prices
+description: Ames sale prices on the log scale, from a two-covariate line to a tuned XGBoost.
+theme: jekyll-theme-cayman
+show_downloads: false
+markdown: kramdown
+
+# Jekyll 3 replaces the default exclude list. Keep the defaults, and keep the
+# R Markdown sources out of the page build: both notebooks open with their own
+# YAML front matter, which Jekyll would otherwise publish as extra pages.
+exclude:
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/
+  - "Kaggle - Advanced Regression for Housing Prices.Rmd"
+  - "house prices - EDA.Rmd"
+  - "*.RDS"
+  - "*.Rproj"
