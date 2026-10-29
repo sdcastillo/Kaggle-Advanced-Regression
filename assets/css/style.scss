@@ -383,6 +383,16 @@ body.samwiki .sw-card:hover {
   box-shadow: 0 18px 36px rgba(12, 19, 48, 0.1);
 }
 
+body.samwiki .sw-thumb {
+  display: block;
+  width: 100%;
+  height: 9rem;
+  object-fit: cover;
+  border-radius: 12px;
+  margin: 0 0 0.75rem;
+  background: #123055;
+}
+
 body.samwiki .sw-card-top {
   display: flex;
   align-items: flex-start;

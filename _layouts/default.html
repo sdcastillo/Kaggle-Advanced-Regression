@@ -12,6 +12,9 @@
     {% include head-custom.html %}
     <meta name="keywords" content="{{ page.keywords | default: 'artificial intelligence, superintelligence, SI' }}">
     <meta name="robots" content="index, follow">
+    {% if page.youtube %}
+    <link rel="me" href="{{ page.youtube }}">
+    {% endif %}
     <meta property="article:author" content="https://sdcastillo.github.io/">
     {% if page.hashtags %}
       {% assign seo_tags = page.hashtags | split: ' ' %}

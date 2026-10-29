@@ -8,7 +8,11 @@ Sam Castillo’s November 2018 write-up for the Kaggle House Prices competition 
 
 I was really early into Kaggle. In 2016 I was participating in competitive machine-learning competitions there, training models on a custom-built PC: a GPU and a CPU, AMD chips, RAM, and the advanced processing I had put together so the fits could run at home. I had a job at Staples in computer sales at the same time. Black Friday went late, and I was up late those nights. The notebooks in this repo are the 13 November 2018 House Prices write-up that followed.
 
-#Kaggle #Kaggle2016 #CompetitiveML #HousePrices #AdvancedRegression #AmesHousing #XGBoost #Lasso #MachineLearning #RStats #CustomPC #AMD #GPU
+#Kaggle #Kaggle2016 #CompetitiveML #HousePrices #AdvancedRegression #AmesHousing #XGBoost #Lasso #MachineLearning #Statistics #GLM #RStats #YouTube #CustomPC #AMD #GPU
+
+## YouTube
+
+Machine learning, AI, and statistics lessons are on [Predictive Insights AI](https://www.youtube.com/@predictiveanalyst). The [ML and stats playlist](https://www.youtube.com/playlist?list=PL5fwmyo89ICYJNJhAg5dfZD0VpXpJL-ak) includes GLM link functions, decision trees, cost-complexity pruning, data exploration in R, and the Exam PA live webinar. A later short explains [bias and variance](https://www.youtube.com/watch?v=tSIddgdqnNM).
 
 The training file has 1,460 homes and 81 columns. The test file has 1,459 homes. The modeling notebook counts 43 categorical fields and 38 numeric ones. Neighborhood names in `data_description.txt` sit inside the Ames city limits.
 
