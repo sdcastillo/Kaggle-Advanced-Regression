@@ -1,9 +1,37 @@
 ---
 layout: default
 title: Advanced Regression for Housing Prices
-description: Ames sale prices on the log scale, from a two-covariate line to a tuned XGBoost.
+tagline: Ames sale prices on the log scale, from a two-covariate line to a tuned XGBoost.
+description: Sam Castillo on entering Kaggle’s competitive machine-learning contests in 2016, training models on a custom-built AMD PC, and the November 2018 Ames house-price notebooks.
+author: Sam Castillo
+keywords: "Kaggle, competitive machine learning, House Prices, Ames Iowa, advanced regression, XGBoost, lasso, elastic net, R, Sam Castillo, UMass Amherst, custom PC, AMD, GPU, CPU, RAM, 2016, Black Friday, Staples computer sales, artificial intelligence, superintelligence, SI"
+hashtags: "#Kaggle #Kaggle2016 #CompetitiveML #HousePrices #AdvancedRegression #AmesHousing #XGBoost #Lasso #MachineLearning #RStats #CustomPC #AMD #GPU #artificialintelligence #superintelligence #SI"
 samwiki: true
 ---
+
+<section class="sw-section" id="early-kaggle">
+  <div class="sw-section-head">
+    <h2>Early on Kaggle <span class="sw-pill">2016</span></h2>
+    <p>A note from Sam Castillo.</p>
+  </div>
+  <div class="sw-lede-copy">
+    <p>I was really early into Kaggle. In 2016 I was participating in competitive machine-learning competitions on Kaggle, and I was training the models myself. The work ran on a custom-built PC: a GPU and a CPU, AMD chips, RAM, and the advanced processing I had put together so the fits could run at home.</p>
+    <p>I had a job at Staples in computer sales at the same time. Black Friday went late. I was up late those nights on the sales floor, with computers, and still in the competitions.</p>
+    <p>The notebooks below are the later write-up of that same practice. On 13 November 2018, while I was a mathematics student at UMass Amherst, I fitted the Ames House Prices data: log sale price, a lasso, an elastic net, and a tuned XGBoost. The first contests were already two years behind me.</p>
+    <p class="sw-jumps" aria-label="Hashtags">
+      <a href="https://github.com/topics/kaggle">#Kaggle</a>
+      <a href="https://github.com/topics/machine-learning">#CompetitiveML</a>
+      <a href="https://github.com/topics/kaggle">#Kaggle2016</a>
+      <a href="https://github.com/topics/xgboost">#XGBoost</a>
+      <a href="https://github.com/topics/r">#RStats</a>
+      <a href="https://github.com/topics/data-science">#HousePrices</a>
+      <a href="https://github.com/topics/machine-learning">#MachineLearning</a>
+      <a href="https://github.com/topics/hardware">#CustomPC</a>
+      <a href="https://github.com/topics/amd">#AMD</a>
+      <a href="https://github.com/topics/gpu">#GPU</a>
+    </p>
+  </div>
+</section>
 
 <div class="sw-lede">
   <div class="sw-lede-copy">

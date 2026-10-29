@@ -15,7 +15,12 @@
 # Live URL: https://sdcastillo.github.io/Kaggle-Advanced-Regression/
 
 title: Advanced Regression for Housing Prices
-description: Ames sale prices on the log scale, from a two-covariate line to a tuned XGBoost.
+tagline: Ames sale prices on the log scale, from a two-covariate line to a tuned XGBoost.
+description: Sam Castillo on entering Kaggle’s competitive machine-learning contests in 2016, training models on a custom-built AMD PC, and the November 2018 Ames house-price notebooks.
+author: Sam Castillo
+lang: en
+url: https://sdcastillo.github.io
+baseurl: /Kaggle-Advanced-Regression
 theme: jekyll-theme-cayman
 show_downloads: false
 markdown: kramdown
