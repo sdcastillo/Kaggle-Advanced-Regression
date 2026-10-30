@@ -1,9 +1,38 @@
 ---
 layout: default
 title: Advanced Regression for Housing Prices
-description: Ames sale prices on the log scale, from a two-covariate line to a tuned XGBoost.
+tagline: Ames sale prices on the log scale, from a two-covariate line to a tuned XGBoost.
+description: Sam Castillo on Kaggle contests in 2016, a custom-built AMD PC, the November 2018 Ames house-price notebooks, and machine-learning videos on Predictive Insights AI.
+author: Sam Castillo
+keywords: "Kaggle, competitive machine learning, House Prices, Ames Iowa, advanced regression, XGBoost, lasso, elastic net, GLM, decision trees, bias variance, R, statistics, YouTube, Predictive Insights AI, Sam Castillo, UMass Amherst, custom PC, AMD, GPU, CPU, RAM, 2016, Black Friday, Staples computer sales, artificial intelligence, superintelligence, SI"
+hashtags: "#Kaggle #Kaggle2016 #CompetitiveML #HousePrices #AdvancedRegression #AmesHousing #XGBoost #Lasso #MachineLearning #Statistics #GLM #RStats #YouTube #CustomPC #AMD #GPU #artificialintelligence #superintelligence #SI"
+youtube: "https://www.youtube.com/@predictiveanalyst"
 samwiki: true
 ---
+
+<section class="sw-section" id="early-kaggle">
+  <div class="sw-section-head">
+    <h2>Early on Kaggle <span class="sw-pill">2016</span></h2>
+    <p>A note from Sam Castillo.</p>
+  </div>
+  <div class="sw-lede-copy">
+    <p>I was really early into Kaggle. In 2016 I was participating in competitive machine-learning competitions on Kaggle, and I was training the models myself. The work ran on a custom-built PC: a GPU and a CPU, AMD chips, RAM, and the advanced processing I had put together so the fits could run at home.</p>
+    <p>I had a job at Staples in computer sales at the same time. Black Friday went late. I was up late those nights on the sales floor, with computers, and still in the competitions.</p>
+    <p>The notebooks below are the later write-up of that same practice. On 13 November 2018, while I was a mathematics student at UMass Amherst, I fitted the Ames House Prices data: log sale price, a lasso, an elastic net, and a tuned XGBoost. The first contests were already two years behind me.</p>
+    <p class="sw-jumps" aria-label="Hashtags">
+      <a href="https://github.com/topics/kaggle">#Kaggle</a>
+      <a href="https://github.com/topics/machine-learning">#CompetitiveML</a>
+      <a href="https://github.com/topics/kaggle">#Kaggle2016</a>
+      <a href="https://github.com/topics/xgboost">#XGBoost</a>
+      <a href="https://github.com/topics/r">#RStats</a>
+      <a href="https://github.com/topics/data-science">#HousePrices</a>
+      <a href="https://github.com/topics/machine-learning">#MachineLearning</a>
+      <a href="https://github.com/topics/hardware">#CustomPC</a>
+      <a href="https://github.com/topics/amd">#AMD</a>
+      <a href="https://github.com/topics/gpu">#GPU</a>
+    </p>
+  </div>
+</section>
 
 <div class="sw-lede">
   <div class="sw-lede-copy">
@@ -66,6 +95,85 @@ samwiki: true
       <div class="sw-actions">
         <a class="sw-btn sw-btn-source" href="https://github.com/sdcastillo/Kaggle-Advanced-Regression/blob/master/label_encoding.R">Encoder</a>
         <a class="sw-btn sw-btn-live" href="data_description.txt">Codebook</a>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section class="sw-section" id="youtube">
+  <div class="sw-section-head">
+    <h2>On YouTube <span class="sw-pill">ML · AI · stats</span></h2>
+    <p>Lessons from Sam Castillo’s channel, Predictive Insights AI. The same models as these notebooks: generalized linear models, trees, and the bias-variance tradeoff.</p>
+  </div>
+  <div class="sw-actions" style="margin-bottom: 1rem;">
+    <a class="sw-btn sw-btn-live" href="https://www.youtube.com/@predictiveanalyst">Open the channel</a>
+    <a class="sw-btn sw-btn-source" href="https://www.youtube.com/playlist?list=PL5fwmyo89ICYJNJhAg5dfZD0VpXpJL-ak">ML and stats playlist</a>
+  </div>
+  <div class="sw-grid">
+    <article class="sw-card">
+      <a href="https://www.youtube.com/watch?v=tSIddgdqnNM"><img class="sw-thumb" src="https://i.ytimg.com/vi/tSIddgdqnNM/hqdefault.jpg" alt="Thumbnail for Bias or Variance? The Machine-Learning Trade-Off Explained With One Bowling Strike" width="480" height="360"></a>
+      <div class="sw-card-top">
+        <h3 class="sw-name"><a href="https://www.youtube.com/watch?v=tSIddgdqnNM">Bias or variance</a></h3>
+        <span class="sw-lang">ML</span>
+      </div>
+      <p class="sw-desc">The machine-learning tradeoff, told with one bowling strike. On Predictive Insights AI, October 2026.</p>
+      <div class="sw-actions">
+        <a class="sw-btn sw-btn-live" href="https://www.youtube.com/watch?v=tSIddgdqnNM">Watch</a>
+      </div>
+    </article>
+    <article class="sw-card">
+      <a href="https://www.youtube.com/watch?v=xDJXuoM6ZCI"><img class="sw-thumb" src="https://i.ytimg.com/vi/xDJXuoM6ZCI/hqdefault.jpg" alt="Thumbnail for Mastering GLM Link Functions" width="480" height="360"></a>
+      <div class="sw-card-top">
+        <h3 class="sw-name"><a href="https://www.youtube.com/watch?v=xDJXuoM6ZCI">GLM link functions</a></h3>
+        <span class="sw-lang">Stats</span>
+      </div>
+      <p class="sw-desc">Generalized linear models past the identity link: binomial, Poisson, and gamma. The housing lasso is the Gaussian cousin of this lesson.</p>
+      <div class="sw-actions">
+        <a class="sw-btn sw-btn-live" href="https://www.youtube.com/watch?v=xDJXuoM6ZCI">Watch</a>
+      </div>
+    </article>
+    <article class="sw-card">
+      <a href="https://www.youtube.com/watch?v=J-LLoESGXnA"><img class="sw-thumb" src="https://i.ytimg.com/vi/J-LLoESGXnA/hqdefault.jpg" alt="Thumbnail for Decoding Decision Trees for Machine Learning" width="480" height="360"></a>
+      <div class="sw-card-top">
+        <h3 class="sw-name"><a href="https://www.youtube.com/watch?v=J-LLoESGXnA">Decision trees</a></h3>
+        <span class="sw-lang">ML</span>
+      </div>
+      <p class="sw-desc">How a decision tree splits, which is the base learner inside the gradient booster in the housing notebook.</p>
+      <div class="sw-actions">
+        <a class="sw-btn sw-btn-live" href="https://www.youtube.com/watch?v=J-LLoESGXnA">Watch</a>
+      </div>
+    </article>
+    <article class="sw-card">
+      <a href="https://www.youtube.com/watch?v=FE5-pKaBHrg"><img class="sw-thumb" src="https://i.ytimg.com/vi/FE5-pKaBHrg/hqdefault.jpg" alt="Thumbnail for Cost Complexity Pruning" width="480" height="360"></a>
+      <div class="sw-card-top">
+        <h3 class="sw-name"><a href="https://www.youtube.com/watch?v=FE5-pKaBHrg">Cost-complexity pruning</a></h3>
+        <span class="sw-lang">ML</span>
+      </div>
+      <p class="sw-desc">Pruning a tree so it stops fitting noise. The same idea as the depth and learning-rate choices in the XGBoost grid.</p>
+      <div class="sw-actions">
+        <a class="sw-btn sw-btn-live" href="https://www.youtube.com/watch?v=FE5-pKaBHrg">Watch</a>
+      </div>
+    </article>
+    <article class="sw-card">
+      <a href="https://www.youtube.com/watch?v=tHxeKVQP1oA"><img class="sw-thumb" src="https://i.ytimg.com/vi/tHxeKVQP1oA/hqdefault.jpg" alt="Thumbnail for Data Exploration in R for Bank Loans" width="480" height="360"></a>
+      <div class="sw-card-top">
+        <h3 class="sw-name"><a href="https://www.youtube.com/watch?v=tHxeKVQP1oA">Data exploration in R</a></h3>
+        <span class="sw-lang">R</span>
+      </div>
+      <p class="sw-desc">A walk through an R exploration, the same first move as the histograms and missingness charts in these notebooks.</p>
+      <div class="sw-actions">
+        <a class="sw-btn sw-btn-live" href="https://www.youtube.com/watch?v=tHxeKVQP1oA">Watch</a>
+      </div>
+    </article>
+    <article class="sw-card">
+      <a href="https://www.youtube.com/watch?v=R5H90R8ssAI"><img class="sw-thumb" src="https://i.ytimg.com/vi/R5H90R8ssAI/hqdefault.jpg" alt="Thumbnail for Live Webinar: Exam PA Machine Learning Secrets" width="480" height="360"></a>
+      <div class="sw-card-top">
+        <h3 class="sw-name"><a href="https://www.youtube.com/watch?v=R5H90R8ssAI">Exam PA live webinar</a></h3>
+        <span class="sw-lang">ML</span>
+      </div>
+      <p class="sw-desc">A live session on the machine-learning material in the Society of Actuaries predictive analytics exam.</p>
+      <div class="sw-actions">
+        <a class="sw-btn sw-btn-live" href="https://www.youtube.com/watch?v=R5H90R8ssAI">Watch</a>
       </div>
     </article>
   </div>
